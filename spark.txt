@@ -1,0 +1,58 @@
+val file = sc.textFile("hdfs://167.205.35.25:8020/user/twitter/twitter_rv_.net")
+
+val map1 = file.flatMap(  x => [(x.split("\t")(0), x.split("\t")(1)), (x.split("\t")(1), x.split("\t")(0).toInt * (-1))])
+
+
+
+//flatmap
+val map1 = file.flatMap{ x =>
+    val arr1 = (x.split("\t")(0), x.split("\t")(1)).collect()
+    val arr2 = (x.split("\t")(1), x.split("\t")(0).toInt * (-1)).collect()
+    arr1 ++ arr2
+}
+
+
+
+//array
+val file = sc.textFile("/mnt/extra/twitter_rv.net")
+val arr1 = file.map(x => (x.split("\t")(0), x.split("\t")(1)))
+val arr2 = file.map(line => (line.split("\t")(1), line.split("\t")(0).toInt * (-1)))
+val arrInput = arr1 ++ arr2
+val reduce = x
+val reduce1 = arrInput.reduceByKey(__++__)
+
+val map1 = arrInput.map(x => (x[0], [x[1]]))
+gajalan karena object array  langsung padahal harusnya map dan reduce rdd
+
+//vector
+val map = file.flatMap{ x =>
+    val in = x.split("\t")
+    Vector(
+        (in(0).toInt, Vector(in(1).toInt)),
+        (in(1).toInt, Vector(in(0).toInt * (-1)))
+    )
+}
+val reduce1 = map.reduceByKey(_++_)
+
+val map2 = reduce1.map{ x =>
+    (x._1, x._2.partition( y =>
+        y < 0
+    ))
+}
+
+val flatmap2 = map2.flatMap{ x =>
+    val set = scala.collection.mutable.Set[(Int, Vector[Int])]()
+    for (i <- x._2._1) {
+        if (!x._2._2.isEmpty){
+            set += ((i * (-1), x._2._2))
+        }
+    }
+    set += ((x._1, x._2._2))
+}
+
+var reduce2 = flatmap2.reduceByKey(_++_)
+var map3 = reduce2.map { x =>
+    (x._1, x._2.toSet.size)
+}
+var top10 = map3.sortBy(x => x._2, false).take(10)
+top10.saveAsTextFinal("top10")
